@@ -58,7 +58,6 @@ function draw() {
 
 function gotHands(results) {
   hands = results;
-  console.log("Hands data:", hands); // Debugging: Check hands data
 }
 
 function isHandOpen() {
@@ -76,15 +75,13 @@ function isHandOpen() {
 
     if (wrist && thumbTip && indexTip && middleTip && ringTip && pinkyTip) {
       const threshold = 50; // Adjust this threshold as needed
-      const isOpen =
+      return (
         dist(wrist.position.x, wrist.position.y, thumbTip.position.x, thumbTip.position.y) > threshold &&
         dist(wrist.position.x, wrist.position.y, indexTip.position.x, indexTip.position.y) > threshold &&
         dist(wrist.position.x, wrist.position.y, middleTip.position.x, middleTip.position.y) > threshold &&
         dist(wrist.position.x, wrist.position.y, ringTip.position.x, ringTip.position.y) > threshold &&
-        dist(wrist.position.x, wrist.position.y, pinkyTip.position.x, pinkyTip.position.y) > threshold;
-
-      console.log("Hand open status:", isOpen); // Debugging: Check hand open status
-      return isOpen;
+        dist(wrist.position.x, wrist.position.y, pinkyTip.position.x, pinkyTip.position.y) > threshold
+      );
     }
   }
   return false;
