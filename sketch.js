@@ -1,8 +1,10 @@
 let video;
 let handpose;
 let predictions = [];
+let circleX, circleY;
 let noseX = 0;
 let noseY = 0;
+let isHandOpenFlag = false;
 
 function setup() {
   createCanvas(640, 480);
@@ -18,9 +20,11 @@ function setup() {
     predictions = results;
   });
 
-  // Set a fixed nose position (for simplicity)
+  // Set initial positions
   noseX = width / 2;
-  noseY = height / 3;
+  noseY = height / 3; // Nose position
+  circleX = width / 2;
+  circleY = height / 4; // Forehead position
 }
 
 function modelReady() {
@@ -30,15 +34,19 @@ function modelReady() {
 function draw() {
   image(video, 0, 0, width, height);
 
-  // Draw the nose position
-  fill(0, 255, 0);
-  ellipse(noseX, noseY, 20);
+  // Draw the red circle
+  fill(255, 0, 0);
+  ellipse(circleX, circleY, 20);
 
   // Check if the hand is open
   if (isHandOpen()) {
-    // Draw a red circle on the nose
-    fill(255, 0, 0);
-    ellipse(noseX, noseY, 20);
+    isHandOpenFlag = true;
+  }
+
+  // Move the circle to the nose if the hand is open
+  if (isHandOpenFlag) {
+    circleX = noseX;
+    circleY = noseY;
   }
 
   // Draw hand keypoints for debugging
