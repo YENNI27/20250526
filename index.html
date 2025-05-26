@@ -12,7 +12,6 @@
       }
       canvas {
         display: block;
-        margin: auto;
       }
     </style>
   </head>
@@ -29,7 +28,7 @@
       let handposeReady = false;
 
       function setup() {
-        createCanvas(640, 480);
+        createCanvas(windowWidth, windowHeight);
         video = createCapture(VIDEO);
         video.size(width, height);
         video.hide();
@@ -53,6 +52,11 @@
         });
       }
 
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        video.size(windowWidth, windowHeight);
+      }
+
       function draw() {
         image(video, 0, 0, width, height);
 
@@ -68,7 +72,7 @@
           }
         }
 
-        // 畫紅色圓圈
+        // 畫紅色圓圈（縮小版本）
         if (facePredictions.length > 0) {
           const keypoints = facePredictions[0].scaledMesh;
           let index = circleTarget === "forehead" ? 10 : 4;
@@ -76,8 +80,13 @@
             const [x, y] = keypoints[index];
             noFill();
             stroke(255, 0, 0);
-            strokeWeight(4);
-            ellipse(x, y, 100, 100);
+            strokeWeight(3);
+            ellipse(x, y, 30, 30);
+
+            // 加中心十字線
+            strokeWeight(1);
+            line(x - 5, y, x + 5, y);
+            line(x, y - 5, x, y + 5);
           }
         }
       }
