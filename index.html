@@ -27,10 +27,14 @@
       let facemeshReady = false;
       let handposeReady = false;
 
+      let videoWidth = 640;
+      let videoHeight = 480;
+
       function setup() {
         createCanvas(windowWidth, windowHeight);
+
         video = createCapture(VIDEO);
-        video.size(width, height);
+        video.size(videoWidth, videoHeight);
         video.hide();
 
         // 啟動 FaceMesh
@@ -54,11 +58,10 @@
 
       function windowResized() {
         resizeCanvas(windowWidth, windowHeight);
-        video.size(windowWidth, windowHeight);
       }
 
       function draw() {
-        image(video, 0, 0, width, height);
+        image(video, 0, 0, width, height); // 拉到全螢幕
 
         if (!facemeshReady || !handposeReady) return;
 
@@ -72,12 +75,16 @@
           }
         }
 
-        // 畫紅色圓圈（縮小版本）
+        // 畫紅色圓圈（位置依照比例調整）
         if (facePredictions.length > 0) {
           const keypoints = facePredictions[0].scaledMesh;
           let index = circleTarget === "forehead" ? 10 : 4;
+
           if (keypoints[index]) {
-            const [x, y] = keypoints[index];
+            const [xRaw, yRaw] = keypoints[index];
+            const x = map(xRaw, 0, videoWidth, 0, width);
+            const y = map(yRaw, 0, videoHeight, 0, height);
+
             noFill();
             stroke(255, 0, 0);
             strokeWeight(3);
