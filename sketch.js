@@ -24,6 +24,10 @@ function setup() {
   circleY = height / 4;
   noseX = width / 2; // Nose position
   noseY = height / 3;
+
+  // Debugging: Check initial positions
+  console.log("Initial circle position:", circleX, circleY);
+  console.log("Nose position:", noseX, noseY);
 }
 
 function draw() {
@@ -38,10 +42,14 @@ function draw() {
     isHandOpenFlag = true;
   }
 
+  // Debugging: Check if the hand is open and circle position
+  console.log("isHandOpenFlag:", isHandOpenFlag);
+
   // Move the circle to the nose if the hand is open
   if (isHandOpenFlag) {
     circleX = noseX;
     circleY = noseY;
+    console.log("Circle moved to nose position:", circleX, circleY);
   }
 
   // Draw hand keypoints for debugging
