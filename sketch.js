@@ -1,10 +1,14 @@
 let video;
-let handpose;
-let predictions = [];
+let handPose;
+let hands = [];
 let circleX, circleY;
-let noseX = 0;
-let noseY = 0;
+let noseX, noseY;
 let isHandOpenFlag = false;
+
+function preload() {
+  // Initialize HandPose model
+  handPose = ml5.handPose({ flipped: true });
+}
 
 function setup() {
   createCanvas(640, 480);
@@ -12,27 +16,18 @@ function setup() {
   video.size(width, height);
   video.hide();
 
-  // Load the handpose model
-  handpose = ml5.handpose(video, modelReady);
-
-  // Listen for handpose predictions
-  handpose.on("predict", results => {
-    predictions = results;
-  });
+  // Start detecting hands
+  handPose.detectStart(video, gotHands);
 
   // Set initial positions
-  noseX = width / 2;
-  noseY = height / 3; // Nose position
-  circleX = width / 2;
-  circleY = height / 4; // Forehead position
-}
-
-function modelReady() {
-  console.log("Handpose model ready!");
+  circleX = width / 2; // Forehead position
+  circleY = height / 4;
+  noseX = width / 2; // Nose position
+  noseY = height / 3;
 }
 
 function draw() {
-  image(video, 0, 0, width, height);
+  image(video, 0, 0);
 
   // Draw the red circle
   fill(255, 0, 0);
@@ -53,41 +48,46 @@ function draw() {
   drawHandKeypoints();
 }
 
+function gotHands(results) {
+  hands = results;
+}
+
 function isHandOpen() {
-  if (predictions.length > 0) {
-    const hand = predictions[0];
-    const landmarks = hand.landmarks;
+  if (hands.length > 0) {
+    const hand = hands[0]; // Use the first detected hand
+    const keypoints = hand.keypoints;
 
-    // Calculate distances between the wrist and fingertips
-    const wrist = landmarks[0];
-    const thumbTip = landmarks[4];
-    const indexTip = landmarks[8];
-    const middleTip = landmarks[12];
-    const ringTip = landmarks[16];
-    const pinkyTip = landmarks[20];
+    // Extract wrist and fingertip positions
+    const wrist = keypoints.find(k => k.part === "wrist");
+    const thumbTip = keypoints.find(k => k.part === "thumb_tip");
+    const indexTip = keypoints.find(k => k.part === "index_finger_tip");
+    const middleTip = keypoints.find(k => k.part === "middle_finger_tip");
+    const ringTip = keypoints.find(k => k.part === "ring_finger_tip");
+    const pinkyTip = keypoints.find(k => k.part === "pinky_tip");
 
-    const threshold = 50; // Adjust this threshold as needed
-    return (
-      dist(wrist[0], wrist[1], thumbTip[0], thumbTip[1]) > threshold &&
-      dist(wrist[0], wrist[1], indexTip[0], indexTip[1]) > threshold &&
-      dist(wrist[0], wrist[1], middleTip[0], middleTip[1]) > threshold &&
-      dist(wrist[0], wrist[1], ringTip[0], ringTip[1]) > threshold &&
-      dist(wrist[0], wrist[1], pinkyTip[0], pinkyTip[1]) > threshold
-    );
+    if (wrist && thumbTip && indexTip && middleTip && ringTip && pinkyTip) {
+      const threshold = 50; // Adjust this threshold as needed
+      return (
+        dist(wrist.position.x, wrist.position.y, thumbTip.position.x, thumbTip.position.y) > threshold &&
+        dist(wrist.position.x, wrist.position.y, indexTip.position.x, indexTip.position.y) > threshold &&
+        dist(wrist.position.x, wrist.position.y, middleTip.position.x, middleTip.position.y) > threshold &&
+        dist(wrist.position.x, wrist.position.y, ringTip.position.x, ringTip.position.y) > threshold &&
+        dist(wrist.position.x, wrist.position.y, pinkyTip.position.x, pinkyTip.position.y) > threshold
+      );
+    }
   }
   return false;
 }
 
 function drawHandKeypoints() {
-  for (let i = 0; i < predictions.length; i++) {
-    const hand = predictions[i];
-    const landmarks = hand.landmarks;
-
-    for (let j = 0; j < landmarks.length; j++) {
-      const [x, y, z] = landmarks[j];
-      fill(0, 0, 255);
-      noStroke();
-      ellipse(x, y, 10);
+  for (let hand of hands) {
+    if (hand.confidence > 0.1) {
+      for (let i = 0; i < hand.keypoints.length; i++) {
+        let keypoint = hand.keypoints[i];
+        fill(0, 255, 0);
+        noStroke();
+        circle(keypoint.position.x, keypoint.position.y, 10);
+      }
     }
   }
 }
