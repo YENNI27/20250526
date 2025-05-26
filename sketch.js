@@ -1,89 +1,74 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Face + Hand Detection</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.js"></script>
-    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
-  </head>
-  <body>
-    <script>
-      let video;
-      let facemesh;
-      let handpose;
-      let facePredictions = [];
-      let handPredictions = [];
+let video;
+let facemesh;
+let facePredictions = [];
 
-      let circleTarget = "forehead";
-      let facemeshReady = false;
-      let handposeReady = false;
+let handPose;
+let handPredictions = [];
 
-      function setup() {
-        createCanvas(640, 480);
-        video = createCapture(VIDEO);
-        video.size(width, height);
-        video.hide();
+let circleTarget = 'forehead'; // 初始目標位置
 
-        facemesh = ml5.facemesh(video, () => {
-          console.log("FaceMesh is ready!");
-          facemeshReady = true;
-        });
-        facemesh.on("predict", (results) => {
-          facePredictions = results;
-        });
+function setup() {
+  createCanvas(640, 480);
+  video = createCapture(VIDEO, { flipped: true });
+  video.size(width, height);
+  video.hide();
 
-        handpose = ml5.handpose(video, () => {
-          console.log("HandPose is ready!");
-          handposeReady = true;
-          handpose.detectStart(video, (results) => {
-            handPredictions = results;
-          });
-        });
+  // 啟動 facemesh
+  facemesh = ml5.facemesh(video, () => {
+    console.log("FaceMesh ready");
+  });
+  facemesh.on("predict", results => {
+    facePredictions = results;
+  });
+
+  // 啟動 handpose
+  handPose = ml5.handPose({ flipped: true }, () => {
+    console.log("HandPose ready");
+    handPose.detectStart(video, gotHands);
+  });
+}
+
+function gotHands(results) {
+  handPredictions = results;
+}
+
+function draw() {
+  image(video, 0, 0, width, height);
+
+  // 判斷手掌是否張開
+  if (handPredictions.length > 0) {
+    for (let hand of handPredictions) {
+      if (hand.confidence > 0.5 && isHandOpen(hand)) {
+        circleTarget = 'nose'; // 張開手，移到鼻子
+        break;
       }
+    }
+  }
 
-      function draw() {
-        image(video, 0, 0, width, height);
+  // 根據目標畫紅圈（額頭 or 鼻子）
+  if (facePredictions.length > 0) {
+    const keypoints = facePredictions[0].scaledMesh;
+    let index = circleTarget === 'forehead' ? 10 : 4;
+    const [x, y] = keypoints[index];
 
-        // 若尚未載入模型則不處理
-        if (!facemeshReady || !handposeReady) return;
+    noFill();
+    stroke(255, 0, 0);
+    strokeWeight(4);
+    ellipse(x, y, 100, 100);
+  }
+}
 
-        // 如果有手部並張開
-        if (handPredictions.length > 0) {
-          for (let hand of handPredictions) {
-            if (hand.confidence > 0.5 && isHandOpen(hand)) {
-              circleTarget = "nose";
-              break;
-            }
-          }
-        }
+// 判斷手是否張開（拇指和小指距離遠）
+function isHandOpen(hand) {
+  const landmarks = hand.landmarks;
+  if (!landmarks || landmarks.length < 21) return false;
 
-        // 畫紅色圓圈在臉上
-        if (facePredictions.length > 0) {
-          const keypoints = facePredictions[0].scaledMesh;
-          let index = circleTarget === "forehead" ? 10 : 4;
-          if (keypoints[index]) {
-            const [x, y] = keypoints[index];
-            noFill();
-            stroke(255, 0, 0);
-            strokeWeight(4);
-            ellipse(x, y, 100, 100);
-          }
-        }
-      }
+  const thumbTip = landmarks[4];   // 拇指尖端
+  const pinkyTip = landmarks[20];  // 小指尖端
 
-      // 根據手的 keypoints 判斷是否張開
-      function isHandOpen(hand) {
-        const kp = hand.keypoints;
-        if (!kp || kp.length < 21) return false;
-
-        const thumbTip = kp.find((k) => k.name === "thumb_tip");
-        const pinkyTip = kp.find((k) => k.name === "pinky_tip");
-
-        if (!thumbTip || !pinkyTip) return false;
-
-        const d = dist(thumbTip.x, thumbTip.y, pinkyTip.x, pinkyTip.y);
-        return d > 100;
-      }
-    </script>
+  const d = dist(thumbTip[0], thumbTip[1], pinkyTip[0], pinkyTip[1]);
+  return d > 100; // 如果距離超過100，判定為張開手掌
+}
+ipt>
   </body>
 </html>
