@@ -5,6 +5,16 @@
     <title>Face + Hand Detection</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.js"></script>
     <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        margin: auto;
+      }
+    </style>
   </head>
   <body>
     <script>
@@ -24,6 +34,7 @@
         video.size(width, height);
         video.hide();
 
+        // 啟動 FaceMesh
         facemesh = ml5.facemesh(video, () => {
           console.log("FaceMesh is ready!");
           facemeshReady = true;
@@ -32,6 +43,7 @@
           facePredictions = results;
         });
 
+        // 啟動 HandPose
         handpose = ml5.handpose(video, () => {
           console.log("HandPose is ready!");
           handposeReady = true;
@@ -44,10 +56,9 @@
       function draw() {
         image(video, 0, 0, width, height);
 
-        // 若尚未載入模型則不處理
         if (!facemeshReady || !handposeReady) return;
 
-        // 如果有手部並張開
+        // 偵測是否張開手掌
         if (handPredictions.length > 0) {
           for (let hand of handPredictions) {
             if (hand.confidence > 0.5 && isHandOpen(hand)) {
@@ -57,7 +68,7 @@
           }
         }
 
-        // 畫紅色圓圈在臉上
+        // 畫紅色圓圈
         if (facePredictions.length > 0) {
           const keypoints = facePredictions[0].scaledMesh;
           let index = circleTarget === "forehead" ? 10 : 4;
@@ -71,7 +82,7 @@
         }
       }
 
-      // 根據手的 keypoints 判斷是否張開
+      // 判斷是否為張開的手
       function isHandOpen(hand) {
         const kp = hand.keypoints;
         if (!kp || kp.length < 21) return false;
