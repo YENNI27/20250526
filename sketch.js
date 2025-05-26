@@ -1,101 +1,72 @@
 let video;
-let handPose;
-let hands = [];
-let circleX, circleY;
-let noseX, noseY;
-let isHandOpenFlag = false;
+let facemesh;
+let facePredictions = [];
 
-function preload() {
-  // Initialize HandPose model
-  handPose = ml5.handPose({ flipped: true });
-}
+let handPose;
+let handPredictions = [];
+
+let circleTarget = 'forehead'; // 初始目標位置
 
 function setup() {
   createCanvas(640, 480);
-  video = createCapture(VIDEO);
+  video = createCapture(VIDEO, { flipped: true });
   video.size(width, height);
   video.hide();
 
-  // Start detecting hands
-  handPose.detectStart(video, gotHands);
+  // 啟動 facemesh
+  facemesh = ml5.facemesh(video, () => {
+    console.log("FaceMesh ready");
+  });
+  facemesh.on("predict", results => {
+    facePredictions = results;
+  });
 
-  // Set initial positions
-  circleX = width / 2; // Forehead position
-  circleY = height / 4;
-  noseX = width / 2; // Nose position
-  noseY = height / 3;
-
-  // Debugging: Check initial positions
-  console.log("Initial circle position:", circleX, circleY);
-  console.log("Nose position:", noseX, noseY);
-}
-
-function draw() {
-  image(video, 0, 0);
-
-  // Draw the red circle
-  fill(255, 0, 0);
-  ellipse(circleX, circleY, 20);
-
-  // Check if the hand is open
-  if (isHandOpen()) {
-    isHandOpenFlag = true;
-  }
-
-  // Debugging: Check if the hand is open and circle position
-  console.log("isHandOpenFlag:", isHandOpenFlag);
-
-  // Move the circle to the nose if the hand is open
-  if (isHandOpenFlag) {
-    circleX = noseX;
-    circleY = noseY;
-    console.log("Circle moved to nose position:", circleX, circleY);
-  }
-
-  // Draw hand keypoints for debugging
-  drawHandKeypoints();
+  // 啟動 handpose
+  handPose = ml5.handPose({ flipped: true }, () => {
+    console.log("HandPose ready");
+    handPose.detectStart(video, gotHands);
+  });
 }
 
 function gotHands(results) {
-  hands = results;
+  handPredictions = results;
 }
 
-function isHandOpen() {
-  if (hands.length > 0) {
-    const hand = hands[0]; // Use the first detected hand
-    const keypoints = hand.keypoints;
+function draw() {
+  image(video, 0, 0, width, height);
 
-    // Extract wrist and fingertip positions
-    const wrist = keypoints.find(k => k.part === "wrist");
-    const thumbTip = keypoints.find(k => k.part === "thumb_tip");
-    const indexTip = keypoints.find(k => k.part === "index_finger_tip");
-    const middleTip = keypoints.find(k => k.part === "middle_finger_tip");
-    const ringTip = keypoints.find(k => k.part === "ring_finger_tip");
-    const pinkyTip = keypoints.find(k => k.part === "pinky_tip");
-
-    if (wrist && thumbTip && indexTip && middleTip && ringTip && pinkyTip) {
-      const threshold = 50; // Adjust this threshold as needed
-      return (
-        dist(wrist.position.x, wrist.position.y, thumbTip.position.x, thumbTip.position.y) > threshold &&
-        dist(wrist.position.x, wrist.position.y, indexTip.position.x, indexTip.position.y) > threshold &&
-        dist(wrist.position.x, wrist.position.y, middleTip.position.x, middleTip.position.y) > threshold &&
-        dist(wrist.position.x, wrist.position.y, ringTip.position.x, ringTip.position.y) > threshold &&
-        dist(wrist.position.x, wrist.position.y, pinkyTip.position.x, pinkyTip.position.y) > threshold
-      );
-    }
-  }
-  return false;
-}
-
-function drawHandKeypoints() {
-  for (let hand of hands) {
-    if (hand.confidence > 0.1) {
-      for (let i = 0; i < hand.keypoints.length; i++) {
-        let keypoint = hand.keypoints[i];
-        fill(0, 255, 0);
-        noStroke();
-        circle(keypoint.position.x, keypoint.position.y, 10);
+  // 判斷手掌是否張開
+  if (handPredictions.length > 0) {
+    for (let hand of handPredictions) {
+      if (hand.confidence > 0.5 && isHandOpen(hand)) {
+        circleTarget = 'nose'; // 張開手，移到鼻子
+        break;
       }
     }
   }
+
+  // 根據目標畫紅圈（額頭 or 鼻子）
+  if (facePredictions.length > 0) {
+    const keypoints = facePredictions[0].scaledMesh;
+    let index = circleTarget === 'forehead' ? 10 : 4;
+    const [x, y] = keypoints[index];
+
+    noFill();
+    stroke(255, 0, 0);
+    strokeWeight(4);
+    ellipse(x, y, 100, 100);
+  }
 }
+
+// 判斷手是否張開（拇指和小指距離遠）
+function isHandOpen(hand) {
+  const landmarks = hand.landmarks;
+  if (!landmarks || landmarks.length < 21) return false;
+
+  const thumbTip = landmarks[4];   // 拇指尖端
+  const pinkyTip = landmarks[20];  // 小指尖端
+
+  const d = dist(thumbTip[0], thumbTip[1], pinkyTip[0], pinkyTip[1]);
+  return d > 100; // 如果距離超過100，判定為張開手掌
+}
+
